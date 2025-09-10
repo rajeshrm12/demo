@@ -1,9 +1,6 @@
-let startTime = todatetime("2025-09-02T09:00:00-04:00");
-let endTime   = todatetime("2025-09-02T11:59:00-04:00");
-
 requests
-| where timestamp between (startTime .. endTime)
-| where cloud_RoleName == "core-svc-m2m-transfer"
+| where timestamp between (todatetime("2025-09-02T09:00:00-04:00") .. todatetime("2025-09-02T11:59:00-04:00"))
+| where cloud_RoleName == "fo-svc-response"      // or "core-svc-m2m-transfer"
 | extend consumer_lag = toint(customMeasurements["timeSinceEnqueued"])
 | where isnotempty(consumer_lag)
 | summarize
