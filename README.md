@@ -1,13 +1,20 @@
-let start = datetime(2025-09-15 06:00:00);
-let end   = datetime(2025-09-15 14:00:00);
+let start = datetime("2025-09-15T06:20:00-04:00");
+let end = datetime("2025-09-15T07:40:00-04:00");
+
 requests
 | where timestamp between (start .. end)
-| where name == "fraud-rtfds-guardian-response process"
-| summarize cnt = count() by bin(timestamp, 1m)
-| serialize
-| extend start_of_run = iif(cnt > 0 and prev(cnt, 1) == 0, 1, 0)
-| extend run_id = row_cumsum(start_of_run)
-| where cnt > 0
-| summarize RunStart = min(timestamp), RunEnd = max(timestamp), TotalEvents = sum(cnt) by run_id
-| order by RunStart asc
-| take 5
+| where name == "fraud-rtfds-m2m-transfer process"
+| order by timestamp asc
+| extend consumer_lag = toint(customMeasurements["timeSinceEnqueued"])
+| project timestamp, consumer_lag
+| summarize 
+    total_events = count(),
+    gt_100 = countif(consumer_lag > 100),
+    gt_200 = countif(consumer_lag > 200),
+    gt_300 = countif(consumer_lag > 300),
+    gt_400 = countif(consumer_lag > 400),
+    gt_500 = countif(consumer_lag > 500),
+    gt_750 = countif(consumer_lag > 750),
+    gt_1000 = countif(consumer_lag > 1000),
+    gt_1500 = countif(consumer_lag > 1500),
+    gt_2000 = countif(consumer_lag > 2000)
