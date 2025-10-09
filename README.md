@@ -1,4 +1,4 @@
- let op = "<PASTE operation_Id>";
+u let op = "<PASTE operation_Id>";
 union requests, dependencies, traces, customEvents
 | where operation_Id == op
 | project timestamp, _table, name, resultCode, success, message, customDimensions
@@ -41,3 +41,11 @@ requests
 | summarize count() by operation_Id
 | where count_ > 1
 | order by count_ desc
+
+
+
+let op = "<paste operation_Id>";
+union requests, dependencies, traces, customEvents
+| where operation_Id == op
+| project timestamp, cloud_RoleName, name, resultCode, success, message
+| order by timestamp asc
