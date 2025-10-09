@@ -1,5 +1,5 @@
 let lookback = 3d;
-let iid = "b70a047e-a2d8-11f0-8703-00224831596e"; // <-- replace with your itemId
+let iid = "b70a047e-a2d8-11f0-8703-00224831596e"; // replace with your itemId
 customEvents
 | where timestamp > ago(lookback) and itemId == iid
 | project
