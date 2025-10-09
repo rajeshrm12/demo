@@ -32,3 +32,12 @@ requests
 | summarize count() by operation_Id
 | where count_ > 1
 | order by count_ desc
+
+
+let lookback = 3d;
+requests
+| where timestamp > ago(lookback)
+| where name == "fraud-rtfds-m2m-transfer process"
+| summarize count() by operation_Id
+| where count_ > 1
+| order by count_ desc
