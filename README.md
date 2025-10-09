@@ -1,85 +1,36 @@
 let lookback = 3d;
-let svc = "fo-svc-business";  // change to "core-svc-m2m-transfer" then "fo-svc-response"
+let svc = "fo-svc-business";   // or "core-svc-m2m-transfer" / "fo-svc-response"
+
 customEvents
 | where timestamp > ago(lookback) and cloud_RoleName == svc
 | summarize cnt = count(), firstTime = min(timestamp), lastTime = max(timestamp)
           by operation_Id, name
 | where cnt > 1
-| top 30 by lastTime desc
+| extend gapMs = datetime_diff('millisecond', lastTime, firstTime)
+| order by lastTime desc
 
 
 let lookback = 3d;
+let svc = "fo-svc-business";
+
+// pick newest duplicated operation
+let opId =
+toscalar(
+  customEvents
+  | where timestamp > ago(lookback) and cloud_RoleName == svc
+  | summarize cnt=count(), lastTs=max(timestamp) by operation_Id, name
+  | where cnt > 1
+  | top 1 by lastTs desc
+  | project operation_Id
+);
+
+// show the ordered timeline for that op
 customEvents
-| where timestamp > ago(lookback) and cloud_RoleName == "fo-svc-response"
-| extend topic=tostring(customDimensions["topic"]),
-         partition=toint(tostring(customDimensions["partition"])),
-         offset=tolong(tostring(customDimensions["offset"]))
-| where isnotempty(topic) and isnotempty(offset)
-| summarize cnt=count() by topic, partition, offset
-| where cnt > 1
-
-
-
-let lookback = 3d;
-
-// Business keys duplicated
-let biz =
-customEvents
-| where timestamp > ago(lookback) and cloud_RoleName == "fo-svc-business"
-| extend key=tostring(customDimensions["eventKey"])
-| where isnotempty(key)
-| summarize bizCnt=count(), lastB=max(timestamp) by key
-| where bizCnt > 1;
-
-// Do those same keys duplicate in Transfer?
-let trn =
-customEvents
-| where timestamp > ago(lookback) and cloud_RoleName == "core-svc-m2m-transfer"
-| extend key=tostring(customDimensions["eventKey"])
-| where isnotempty(key)
-| summarize trnCnt=count(), lastT=max(timestamp) by key;
-
-biz
-| join kind=leftouter trn on key
-| top 30 by lastB desc
-
-
-
-
-
-let lookback = 3d;   // last 3 days
-let svc = "fo-svc-business";   // change to core-svc-m2m-transfer or fo-svc-response
-customEvents
-| where timestamp > ago(lookback) 
-| where cloud_RoleName == svc
-| summarize cnt = count() by operation_Id, name
-| where cnt > 1
-| summarize totalDuplicateOperations = count(), totalDuplicateEvents = sum(cnt)
-
-
-
-let lookback = 3d;
-let svc = "fo-svc-business";   // change to core-svc-m2m-transfer or fo-svc-response
-
-// total duplicate events for % calc
-let totals =
-customEvents
-| where timestamp > ago(lookback) and cloud_RoleName == svc
-| summarize c = count() by operation_Id, name
-| where c > 1
-| summarize totalDupEvents = sum(c), totalDupOps = dcount(operation_Id);
-
-// per-name stats
-let perName =
-customEvents
-| where timestamp > ago(lookback) and cloud_RoleName == svc
-| summarize c = count() by operation_Id, name
-| where c > 1
-| summarize dupOps = dcount(operation_Id), dupEvents = sum(c) by name
-| order by dupEvents desc
-| extend totalDupEvents = toscalar(totals | project totalDupEvents)
-| extend pctOfDupEvents = 100.0 * dupEvents / totalDupEvents;
-
-perName
-| top 5 by dupEvents desc
-| project name, dupOps, dupEvents, pctOfDupEvents
+| where timestamp > ago(lookback) and cloud_RoleName == svc and operation_Id == opId
+| extend cd = todynamic(customDimensions)
+| project timestamp, name,
+          eventKey   = tostring(cd.eventKey),
+          topic      = tostring(cd.topic),
+          partition  = tostring(cd.partition),
+          offset     = tostring(cd.offset)
+| order by timestamp asc
