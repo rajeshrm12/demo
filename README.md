@@ -1,12 +1,17 @@
 let lookback = 3d;
-let iid = "bfc81954-a2d8-11f0-8706-7c1e525a09da";
+let iid = "bfc81954-a2d8-11f0-8706-7c1e525a09da"; // replace with your itemId
 customEvents
 | where timestamp > ago(lookback)
 | where itemId == iid
-| project timestamp, ingestion=ingestion_time(), cloud_RoleName, cloud_RoleInstance,
-         name, operation_Id, app_Version,
-         sdkVersion=tostring(customDimensions["ai.internal.sdkVersion"]),
-         aiAgent=tostring(customDimensions["ai.agent.version"]),
-         iKey=tostring(customDimensions["ai.internal.nodeName"]), // often blank; keep for clues
-         _ResourceId
+| project 
+    timestamp,
+    ingestion = ingestion_time(),
+    cloud_RoleName,
+    cloud_RoleInstance,
+    operation_Id,
+    sdkVersion = tostring(customDimensions["ai.internal.sdkVersion"]),
+    aiAgent = tostring(customDimensions["ai.agent.version"]),
+    appVersion = tostring(customDimensions["app_Version"]),
+    iKey = tostring(customDimensions["ai.internal.nodeName"]),
+    _ResourceId
 | order by ingestion asc
