@@ -15,3 +15,23 @@ customEvents
     iKey = tostring(customDimensions["ai.internal.nodeName"]),
     _ResourceId
 | order by ingestion asc
+
+
+
+let lookback = 3d;
+let iid = "REPLACE_WITH_ONE_DUP_ITEMID";
+
+customEvents
+| where timestamp > ago(lookback) and itemId == iid
+| project
+    timestamp,
+    ingestion = ingestion_time(),
+    cloud_RoleName,
+    cloud_RoleInstance,
+    operation_Id,
+    sdkVersion = tostring(customDimensions["ai.internal.sdkVersion"]),
+    aiAgent    = tostring(customDimensions["ai.agent.version"]),
+    appVersion = tostring(customDimensions["app_Version"]),
+    resourceId = tostring(column_ifexists("_ResourceId", column_ifexists("resourceId",""))),
+    subscriptionId = tostring(column_ifexists("_SubscriptionId",""))
+| order by ingestion asc
