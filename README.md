@@ -55,4 +55,16 @@ customEvents
 
 
 
+let lookback = 7d;
+let iid = "PUT-ONE-OF-THOSE-itemId-HERE";
+customEvents
+| where timestamp > ago(lookback)
+  and cloud_RoleName == "fo-svc-response"
+  and itemId == iid
+| project timestamp, ingestion = ingestion_time(), name, operation_Id, cloud_RoleInstance
+| order by timestamp asc, ingestion asc
+
+
+
+
 
