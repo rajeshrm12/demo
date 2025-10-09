@@ -22,3 +22,13 @@ requests
 | summarize cnt=count(), first=min(timestamp), last=max(timestamp) by operation_Id
 | where cnt > 1
 | order by last desc
+
+
+
+let lookback = 3d;
+requests
+| where timestamp > ago(lookback)
+| where name == "fraud-rtfds-guardian-response process"
+| summarize count() by operation_Id
+| where count_ > 1
+| order by count_ desc
