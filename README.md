@@ -126,3 +126,9 @@ dependencies
 | summarize depCnt = count(), urls = make_set(name), lastTime = max(timestamp) by operation_Id
 | where depCnt >= 2
 | top 20 by lastTime desc
+
+
+customEvents
+| where timestamp > ago(7d)
+| where cloud_RoleName == "fo-svc-business"
+| summarize sampleNames = make_set(name, 20)
