@@ -1,20 +1,18 @@
-let lookback = 7d;
+// auto-pick newest op where ANY handler duplicated
 let svc = "fo-svc-business";
-customEvents
-| where timestamp > ago(lookback) and cloud_RoleName == svc
-| summarize cnt = count(), firstTime = min(timestamp), lastTime = max(timestamp)
-          by operation_Id, name
-| where cnt > 1
-| order by lastTime desc
+let op =
+  toscalar(
+    customEvents
+    | where timestamp > ago(7d) and cloud_RoleName == svc
+    | summarize cnt=count() by operation_Id, name
+    | where cnt > 1
+    | summarize lastTime=max(timestamp) by operation_Id
+    | top 1 by lastTime desc
+    | project operation_Id
+  );
 
-
-let lookback = 7d;
-let svc = "fo-svc-business";
 customEvents
-| where timestamp > ago(lookback) and cloud_RoleName == svc
-| extend eventKey = tostring(customDimensions["eventKey"])
-| where isnotempty(eventKey)
-| summarize cnt = count(), names = make_set(name), firstTime = min(timestamp), lastTime = max(timestamp)
-          by eventKey, operation_Id
-| where cnt > 1
-| top 50 by lastTime desc
+| where operation_Id == op and cloud_RoleName == "fo-svc-business"
+| extend attempt = tostring(customDimensions["attempt"])
+| project timestamp, name, attempt, message
+| order by timestamp asc
