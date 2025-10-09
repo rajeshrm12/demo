@@ -55,3 +55,31 @@ customEvents
 | summarize cnt = count() by operation_Id, name
 | where cnt > 1
 | summarize totalDuplicateOperations = count(), totalDuplicateEvents = sum(cnt)
+
+
+
+let lookback = 3d;
+let svc = "fo-svc-business";   // change to core-svc-m2m-transfer or fo-svc-response
+
+// total duplicate events for % calc
+let totals =
+customEvents
+| where timestamp > ago(lookback) and cloud_RoleName == svc
+| summarize c = count() by operation_Id, name
+| where c > 1
+| summarize totalDupEvents = sum(c), totalDupOps = dcount(operation_Id);
+
+// per-name stats
+let perName =
+customEvents
+| where timestamp > ago(lookback) and cloud_RoleName == svc
+| summarize c = count() by operation_Id, name
+| where c > 1
+| summarize dupOps = dcount(operation_Id), dupEvents = sum(c) by name
+| order by dupEvents desc
+| extend totalDupEvents = toscalar(totals | project totalDupEvents)
+| extend pctOfDupEvents = 100.0 * dupEvents / totalDupEvents;
+
+perName
+| top 5 by dupEvents desc
+| project name, dupOps, dupEvents, pctOfDupEvents
