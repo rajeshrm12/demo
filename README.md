@@ -83,3 +83,25 @@ http2
 | join kind=leftouter kcnt on key
 | project key, httpCnt, kafkaCnt
 | order by kafkaCnt desc
+
+
+
+
+let lookback = 7d;
+let svc = "fo-svc-response";  // <- exact cloud_RoleName from your screenshot
+
+// Find opIds that made 2+ HTTP calls
+let dup_http =
+dependencies
+| where timestamp > ago(lookback) and cloud_RoleName == svc and type =~ "Http"
+| summarize depCnt = count(), urls = make_set(name), codes = make_set(resultCode), last = max(timestamp)
+          by operation_Id
+| where depCnt >= 2;
+
+// How many request entries we logged for those opIds (usually 1)
+requests
+| where timestamp > ago(lookback) and cloud_RoleName == svc
+| summarize reqCnt = count() by operation_Id
+| join kind=inner dup_http on operation_Id
+| project operation_Id, reqCnt, depCnt, urls, codes, last
+| order by last desc
