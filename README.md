@@ -105,3 +105,13 @@ requests
 | join kind=inner dup_http on operation_Id
 | project operation_Id, reqCnt, depCnt, urls, codes, last
 | order by last desc
+
+
+
+// BUSINESS: operations with 2+ HTTP calls in one op
+dependencies
+| where timestamp > ago(3d)
+| where cloud_RoleName == "fo-svc-business" and type =~ "Http"
+| summarize depCnt=count(), urls=make_set(name), last=max(timestamp) by operation_Id
+| where depCnt >= 2
+| top 20 by last desc
