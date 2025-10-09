@@ -56,3 +56,30 @@ requests
 | where timestamp > ago(3d)
 | summarize count() by cloud_RoleName
 | order by count_ desc
+
+
+
+let lookback = 3d;
+let svc = "fo-svc-response";
+
+// keys with exactly two HTTP calls
+let http2 =
+dependencies
+| where timestamp > ago(lookback) and cloud_RoleName == svc and type =~ "Http"
+| extend key = tostring(customDimensions["eventKey"])
+| where isnotempty(key)
+| summarize httpCnt = count() by key
+| where httpCnt == 2;
+
+// how many times those keys were processed/logged in service
+let kcnt =
+customEvents
+| where timestamp > ago(lookback) and cloud_RoleName == svc
+| extend key = tostring(customDimensions["eventKey"])
+| where isnotempty(key)
+| summarize kafkaCnt = count() by key;
+
+http2
+| join kind=leftouter kcnt on key
+| project key, httpCnt, kafkaCnt
+| order by kafkaCnt desc
