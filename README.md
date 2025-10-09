@@ -49,3 +49,10 @@ union requests, dependencies, traces, customEvents
 | where operation_Id == op
 | project timestamp, cloud_RoleName, name, resultCode, success, message
 | order by timestamp asc
+
+
+
+requests
+| where timestamp > ago(3d)
+| summarize count() by cloud_RoleName
+| order by count_ desc
