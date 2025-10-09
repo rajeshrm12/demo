@@ -42,3 +42,16 @@ customEvents
 biz
 | join kind=leftouter trn on key
 | top 30 by lastB desc
+
+
+
+
+
+let lookback = 3d;   // last 3 days
+let svc = "fo-svc-business";   // change to core-svc-m2m-transfer or fo-svc-response
+customEvents
+| where timestamp > ago(lookback) 
+| where cloud_RoleName == svc
+| summarize cnt = count() by operation_Id, name
+| where cnt > 1
+| summarize totalDuplicateOperations = count(), totalDuplicateEvents = sum(cnt)
