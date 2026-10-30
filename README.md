@@ -1,23 +1,35 @@
-Goal: Build a config-driven, reusable test automation framework for Guardian fraud message validation, extensible across all message types without duplicating code per type.
+Yes. If your team doesn't add validation in services, safe error logging alone fully fixes the reported issue, because the problem is the leak, not the failure. Oversized requests will still fail (Notes returns 400, the DB insert fails) as they do today, but the access number won't appear in logs or alerts anymore.
 
-Background/Flow:
-Guardian’s business service exposes one endpoint (/guardian/business/api/events) that receives fraud-check requests for all message types (M2M Transfer, Add Payee, Step Up — already in production; Self-Service Wires, MSR Wires, Treasury Wires, Treasury ACHO, Global Transfer, etc. — new, currently manual). Requests arrive via MuleSoft, not directly.
+Mention to Paresh that validation is optional. Without it, oversized requests still make the downstream call and attempt the DB save before failing, which is how your other services behave.
 
-For each request:
+How to do safe error logging
 
-	1.	Business service validates mandatory fields and conditional field rules (e.g. if recipientType=P, then recipientFirstName is required). Missing/invalid fields → HTTP 400 with a specific error message, and the message is never pushed to Kafka.
-	2.	If valid, business service builds an event ID (concatenation of 4 fields) and publishes to a Kafka topic specific to that message type.
-	3.	A per-message-type consumer service picks up the message, makes ~9-10 enrichment API calls (e.g. member inquiry, recipient verification) using data from the original request, and assembles a payload for ARIC (the fraud decision engine).
-	4.	Before sending to ARIC, the consumer service renames some fields (Kafka/request field names differ from what ARIC expects) — this mapping must be captured and validated separately per message type.
-	5.	ARIC returns a decision (fraud / no fraud / step up / manual review hold) back through the service.
-	6.	As testers, we can’t observe internal Kafka/consumer processing directly, but we can verify correctness by: (a) calling the same enrichment APIs independently (like manual testers currently do in Postman) using the account number/fields from the original request, and (b) logging into the ARIC UI to confirm the fields displayed there match the schema/mapping document.
+1. Notes service error log
+Search for "Error Member Account Notes service":
 
-Current scope (in priority order):
+log.error("Member Account Notes call failed: event_id={}, status={}, error_code=NOTES_CALL_FAILED",
+        eventId, statusCode);
 
-	•	Mandatory/optional/conditional field validation at the Guardian request stage (positive + negative cases)
-	•	Enrichment API validation (calling each enrichment endpoint independently and asserting expected response)
-	•	ARIC UI field-by-field validation against schema doc, with field-mapping/renaming rules applied
-	•	Out of scope for now: Kafka topic inspection, database validation, Azure App Insights/log tracing
+Remove errorResponse from the log, and don't pass it into CustomServiceException.
 
-Architecture requirement:
-Instead of writing separate step definitions/logic per message type, build a config-driven engine: one JSON/YAML config per message type defining its endpoint, mandatory/optional fields, conditional rules (with expected error messages), enrichment API list (with source field → request param mapping), and ARIC field-name mapping. Generic, reusable step definitions (RequestBuilder, FieldValidator, EnrichmentValidator, AricComparator) read from whichever config is loaded for the scenario. Onboarding a new message type should mean writing a new config file, not new code.
+2. DB error log in the InvestigatorActionService onErrorResume:
+
+log.error("Event processing failed: event_id={}, error_code={}, error_type={}",
+        eventId, errorCode, error.getClass().getSimpleName());
+
+Do the same in GlobalExceptionHandler. Don't use getMessage(), and don't pass the exception object as the last argument (that prints the stack trace with the message).
+
+3. Hibernate's SQL error logger in application.yml:
+
+logging:
+  level:
+    org.hibernate.engine.jdbc.spi.SqlExceptionHelper: OFF
+
+4. Member alert, journey log and Application Insights
+Send only the error code, event ID and exception type, never getMessage() or the response body.
+
+5. Search for anything else
+Search for getMessage(), errorResponse, getResponseBodyAsString and log.error(..., e) in error paths, and fix any that could carry the value.
+
+6. Test
+Post a 22-digit access number. The request should still fail, but searching the logs and the member alert for that number should return nothing.
