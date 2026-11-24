@@ -11,3 +11,6 @@ Get-ChildItem Cert:\CurrentUser\Root, Cert:\LocalMachine\Root, Cert:\CurrentUser
   }
 
 setx REQUESTS_CA_BUNDLE $dst
+
+
+Get-Content C:\certs\azcli-ca.pem -Tail 5
