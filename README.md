@@ -14,3 +14,7 @@ setx REQUESTS_CA_BUNDLE $dst
 
 
 Get-Content C:\certs\azcli-ca.pem -Tail 5
+
+
+echo %REQUESTS_CA_BUNDLE%
+az login
