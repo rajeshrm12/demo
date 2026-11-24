@@ -23,4 +23,7 @@ az login
 (Select-String $src -Pattern "BEGIN CERTIFICATE").Count
 (Select-String $dst -Pattern "BEGIN CERTIFICATE").Count
 
+Install-Module Az.Accounts -Scope CurrentUser
+Connect-AzAccount
+Get-AzAccessToken -ResourceUrl "https://<your resource>/"
 
