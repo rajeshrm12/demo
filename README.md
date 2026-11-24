@@ -18,3 +18,9 @@ Get-Content C:\certs\azcli-ca.pem -Tail 5
 
 echo %REQUESTS_CA_BUNDLE%
 az login
+
+
+(Select-String $src -Pattern "BEGIN CERTIFICATE").Count
+(Select-String $dst -Pattern "BEGIN CERTIFICATE").Count
+
+
