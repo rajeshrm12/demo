@@ -25,5 +25,6 @@ az login
 
 Install-Module Az.Accounts -Scope CurrentUser
 Connect-AzAccount
-Get-AzAccessToken -ResourceUrl "https://<your resource>/"
+Get-AzAccessToken -ResourceUrl "https://<your resource>/"type "C:\Users\E6065\Downloads\portal.azure.com" >> C:\certs\azcli-ca.pem
+
 
